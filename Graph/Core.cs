@@ -23,18 +23,29 @@ namespace Graph
 
                 public int VertexIndex(int col, int row)
                 {
-                    return col + row * ColSz;
+                    if (col >= 0 && col < ColSz && row >= 0 && row < RowSz)
+                        return col + row * ColSz;
+                    else throw 
+                        new ArgumentOutOfRangeException("column and row values range from 0 (inclusive) to size of dimension(exclusive) - provided values: " + col + " & " + row);
                 }
             }
 
             public class GridVertex : Vertex
             {
                 public readonly int col, row;
+                
+                //vertex shorthands
+                public readonly int LEFT, UP, RIGHT, DOWN;
 
                 public GridVertex(int c, int r, Grid.GridMapper gm) : base(gm.VertexIndex(c, r))
                 {
                     col = c;
                     row = r;
+
+                    LEFT = (c-1 < 0) ? -1 : gm.VertexIndex(c-1, r);
+                    RIGHT = (c+1 < gm.ColSz) ? gm.VertexIndex(c+1, r) : -1;
+                    UP = (r-1 < 0) ? -1 : gm.VertexIndex(c, r - 1);
+                    DOWN = (r+1 < gm.RowSz) ? gm.VertexIndex(c, r + 1) : -1;
                 }
             }
 
@@ -49,20 +60,16 @@ namespace Graph
 
                 public void AddEdge(int x1, int y1, int x2, int y2, T weight, bool BiDirectional = false)
                 {
-                    int id1 = Mapping.VertexIndex(x1, y1), id2 = Mapping.VertexIndex(x2, y2);
+                    
                     //lazy instantiation
-                    Vertex n1 = nodes[id1], n2 = nodes[id2];
-                    if (n1 == null)
-                        nodes[id1] = new GridVertex(x1,y1, Mapping);
-                    if (n2 == null)
-                        nodes[id2] = new GridVertex(x2, y2, Mapping);
+                    Vertex n1 = GetVertex(x1, y1), n2 = GetVertex(x2,y2);
 
-                    _AddEdge(Mapping.VertexIndex(x1, y1), Mapping.VertexIndex(x2, y2), weight, BiDirectional);
+                    _AddEdge(n1.Id, n2.Id, weight, BiDirectional);
                 }
 
-                public Vertex GetVertex(int x, int y)
+                public GridVertex GetVertex(int x, int y)
                 {
-                    return nodes[Mapping.VertexIndex(x, y)];
+                    return (GridVertex) (nodes[Mapping.VertexIndex(x, y)] ?? (nodes[Mapping.VertexIndex(x,y)] = new GridVertex(x,y, Mapping)));
                 }
 
             }
@@ -106,20 +113,32 @@ namespace Graph
 
         public class Vertex
         {
-            public readonly int id;
-            List<int> Adjacent = new List<int>();
+            public readonly int Id;
+            readonly List<int> AdjacentEdgeIds = new List<int>();
+            readonly List<int> AdjacentVertices = new List<int>();
 
-            public Vertex(int id) { this.id = id; }
+            public Vertex(int id) { this.Id = id; }
 
 
-            public void AddEdgeTo(int v_other)
+            public void AddEdgeTo<T>(int e_id, Edge<T> e) where T : IComparable
             {
-                Adjacent.Add(v_other);
+                AdjacentEdgeIds.Add(e_id);
+                AdjacentVertices.Add( e.v0 == Id ? e.v1 : e.v0 );
             }
 
-            public IEnumerable<int> GetAdjacent()
+            public IEnumerable<int> GetAdjacentEdgeIds()
             {
-                return Adjacent.AsEnumerable<int>();
+                return AdjacentEdgeIds.AsEnumerable<int>();
+            }
+            
+            public IEnumerable<int> GetAdjacentVetices()
+            {
+                return AdjacentVertices.AsEnumerable<int>();
+            }
+
+            public bool ConnectsToVertex(int v)
+            {
+                return AdjacentVertices.Contains(v);
             }
 
         }
@@ -127,20 +146,14 @@ namespace Graph
         public class Graph<T> where T : IComparable
         {
             protected Vertex[] nodes;
-            protected List<Edge<T>> edges = new List<Edge<T>>();
+            private List<Edge<T>> edges = new List<Edge<T>>();
 
             public readonly int Size;
 
-            public Graph(int Vertices)
+            protected Graph(int Vertices)
             {
                 nodes = new Vertex[Vertices];
                 Size = Vertices;
-            }
-
-            protected void lazyInstantiateVertex(Vertex v)
-            {
-                if (nodes[v.id] == null)
-                    nodes[v.id] = v;
             }
 
             protected void _AddEdge(int v1, int v2, T w, bool BiDirectional = false)
@@ -149,27 +162,23 @@ namespace Graph
                 edges.Add(e);
                 int e_id = edges.Count - 1;
 
-                nodes[v1].AddEdgeTo(e_id);
+                nodes[v1].AddEdgeTo(e_id, e);
 
                 if (BiDirectional)
-                    nodes[v2].AddEdgeTo(e_id);
+                    nodes[v2].AddEdgeTo(e_id, e);
             }
 
             public void AddEdge(int v1, int v2, T w, bool BiDirectional = false)
             {
                 //lazy instantiation
-                Vertex n1 = nodes[v1], n2 = nodes[v2];
-                if (n1 == null)
-                    nodes[v1] = new Vertex(v1);
-                if (n2 == null)
-                    nodes[v2] = new Vertex(v2);
+                Vertex n1 = GetVertex(v1), n2 = GetVertex(v2);
 
                 _AddEdge(v1, v2, w, BiDirectional);
             }
 
             public Vertex GetVertex(int v_id)
             {
-                return nodes[v_id];
+                return nodes[v_id] ?? (nodes[v_id] = new Vertex(v_id));
             }
 
             public IEnumerable<Edge<T>> GetEdges()
@@ -177,14 +186,12 @@ namespace Graph
                 return edges.AsEnumerable<Edge<T>>();
             }
 
-            internal IEnumerable<Vertex> GetVertices()
+            public IEnumerable<Vertex> GetVertices()
             {
                 return nodes.AsEnumerable<Vertex>();
             }
         }
 
-      
-
-
+     
     }
 }
