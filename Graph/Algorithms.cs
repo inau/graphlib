@@ -12,19 +12,21 @@ namespace Graph
 
         public class UnionFind
         {
-            readonly int[] rank, parent;
-            readonly int vertices;
+            readonly int[] Rank, Parent;
+            public int Vertices { get; private set; }
+            public int Components { get; private set; }
 
             public UnionFind(int VertexCount)
             {
-                vertices = VertexCount;
+                Vertices = VertexCount;
+                Components = Vertices;
 
-                rank = new int[vertices];
-                parent = new int[vertices];
+                Rank = new int[Vertices];
+                Parent = new int[Vertices];
                 for (int i = 0; i < VertexCount; i++)
                 {
-                    parent[i] = i;
-                    rank[i] = 1;
+                    Parent[i] = i;
+                    Rank[i] = 1;
                 }
             }
 
@@ -34,55 +36,96 @@ namespace Graph
 
                 while (!isRoot(r))
                 {
-                    r = parent[r];
+                    Parent[r] = Parent[ Parent[r] ];
+                    r = Parent[r];
                 }
-
-                //compress
-                parent[v] = r;
-
                 return r;
             }
 
             private bool isRoot(int v)
             {
-                return parent[v] == v;
+                return Parent[v] == v;
             }
 
             private void attachComponent(int VertexId, int RootId)
             {
-                parent[VertexId] = RootId;
-                rank[RootId] += rank[VertexId];
+                Parent[VertexId] = RootId;
+                Rank[RootId] += Rank[VertexId];
+                Components--;
+            }
+
+            public bool Connected()
+            {
+
             }
 
             public void Union(int v0, int v1)
             {
-                int r;
-                if (rank[v0] >= rank[v1])
-                {
-                    r = Find(v0);
-                    attachComponent(v1, r);
-                }
-                else
-                {
-                    r = Find(v1);
-                    attachComponent(v0, r);
-                }
+                int r0 = Find(v0), r1 = Find(v1);
+                if (Rank[r0] >= Rank[r1])
+                    attachComponent(v1, r0);
+                else attachComponent(v0, r1);
             }
 
             public int Find(int v)
             {
                 return findRoot(v);
             }
+
+            public IEnumerable<int> GetComponentParentVertices()
+            {
+                var distinct = Parent.AsEnumerable().Distinct();
+                if (distinct.Count() != Components)
+                {
+                    Console.WriteLine("\n-flattening");
+                    for( int i = 0; i < Parent.Length; i++)
+                    {
+                        Console.Write(" " + i);
+                        findRoot(i);
+                    }
+                    Console.WriteLine("\n--flattening");
+                }
+                else return distinct;
+
+                return Parent.AsEnumerable().Distinct();
+            }
         }
 
         public class MinimumSpannngTree<T> : List<Edge<T>> where T : IComparable {
             readonly SortedSet<int> vertices = new SortedSet<int>();
+            public readonly UnionFind Uf;
 
-            public void AddToTree(Edge<T> item)
+            public MinimumSpannngTree(int Vertices) : base() {
+                Uf = new UnionFind(Vertices);
+            }
+
+            private void _AddToTree(Edge<T> item)
             {
                 vertices.Add(item.v0);
                 vertices.Add(item.v1);
                 this.Add(item);
+            }
+
+            public void AddToTree(Edge<T> item)
+            {
+                if(this.Count == 0)
+                {
+                    Uf.Union(item.v0, item.v1);
+                    _AddToTree(item);
+                    return;
+                }
+
+                //find parent affiliation
+                int pi = Uf.Find(item.v0);
+                int pu = Uf.Find(item.v1);
+
+                //different components
+                if (pi != pu)
+                {
+                    Uf.Union(item.v0, item.v1);
+                    _AddToTree(item);
+                }
+
             }
 
             public bool HasPathBetween(int v_start, int v_end)
@@ -100,30 +143,16 @@ namespace Graph
         {
             public static MinimumSpannngTree<T> Kruskal<T>(Graph<T> g) where T : IComparable
             {
-                var MST = new MinimumSpannngTree<T>();
+                var MST = new MinimumSpannngTree<T>( g.Size );
+
                 var sortedEdges = g.GetEdges().OrderBy(x => x.weight);               
-                UnionFind uf = new UnionFind(g.Size);
-                
-                Edge<T> e = sortedEdges.First();
-                uf.Union(e.v0, e.v1);
 
                 foreach (var edge in sortedEdges)
                 {
-                    if (edge.Equals(e)) continue; //skip first since we already have this in UF
-
-                    //find parent affiliation
-                    int pi = uf.Find(edge.v0);
-                    int pu = uf.Find(edge.v1);
-
-                    //different components
-                    if (pi != pu)
-                    {
-                        uf.Union(edge.v0, edge.v1);
-                        MST.AddToTree(edge);
-                    }
+                    MST.AddToTree(edge);
 
                     //if edges added reach V-1 we have a edge for every pair of nodes
-                    if (!(MST.Count < g.Size)) break;
+                    //if (!(MST.Count < g.Size)) break;
                 }
 
                 return MST;

@@ -31,8 +31,13 @@ namespace Test
                     g.AddEdge(x, y, x + 1, y, 1, true);
                 }
             }
-            
+            var mst = Graph.Algorithms.MSTFactory.Kruskal(g);
             Graph.Util.Output.PrintGraph(g);
+            Console.WriteLine("reached components " + mst.Uf.Components + " from " + mst.Uf.Vertices + " vertices");
+            Console.Write("components rooted at " );
+            foreach (var d in mst.Uf.GetComponentParentVertices())
+                Console.Write(" " + d);
+            Console.WriteLine();
         }
         
         static void SparseGraphTest()
@@ -57,6 +62,13 @@ namespace Test
             }
             
             Graph.Util.Output.PrintGraph(g);
+
+            var mst = Graph.Algorithms.MSTFactory.Kruskal(g);
+            Console.WriteLine("reached components " + mst.Uf.Components + " from " + mst.Uf.Vertices + " vertices");
+            Console.Write("components rooted at ");
+            foreach (var d in mst.Uf.GetComponentParentVertices())
+                Console.Write(" " + d);
+            Console.WriteLine();
         }
 
         static void TestRandomMaze()
@@ -73,6 +85,15 @@ namespace Test
             {
                 Console.Write( " ("+t.v0+", "+t.v1+")" );
             }
+            Console.WriteLine("\n " + mst.Uf.Components);
+
+            Console.WriteLine("reached components " + mst.Uf.Components + " from " + mst.Uf.Vertices + " vertices");
+            Console.Write("components rooted at ");
+            foreach (var d in mst.Uf.GetComponentParentVertices())
+                Console.Write(" " + d);
+            Console.WriteLine();
+
+
             Console.WriteLine("\n--MST");
         }
         
@@ -100,9 +121,9 @@ namespace Test
         static void Main(string[] args)
         {
 
-            ConnectedGraphTest();
-            SparseGraphTest();
-            TestRandomSequence();
+        //    ConnectedGraphTest();
+       //     SparseGraphTest();
+         //   TestRandomSequence();
             TestRandomMaze();
         }
     }
