@@ -121,10 +121,10 @@ namespace Test
         static void Main(string[] args)
         {
 
-        //    ConnectedGraphTest();
-       //     SparseGraphTest();
+       //     ConnectedGraphTest();
+            SparseGraphTest();
          //   TestRandomSequence();
-            TestRandomMaze();
+        //    TestRandomMaze();
         }
     }
 }

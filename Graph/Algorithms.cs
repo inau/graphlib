@@ -54,9 +54,9 @@ namespace Graph
                 Components--;
             }
 
-            public bool Connected()
+            public bool Connected(int v0, int v1)
             {
-
+                return Find(v0) == Find(v1);
             }
 
             public void Union(int v0, int v1)
